@@ -1,0 +1,721 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>WT — Registro</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;600;700;800&display=swap');
+:root {
+  --bg:#111318;--s1:#1c1f2a;--s2:#252935;--s3:#2e3347;
+  --border:#383d52;--text:#e8eaf2;--muted:#6b7194;
+  --prod:#22c55e;--prod-bg:rgba(34,197,94,.12);
+  --inc:#f59e0b;--inc-bg:rgba(245,158,11,.12);
+  --desp:#ef4444;--desp-bg:rgba(239,68,68,.12);
+  --accent:#6366f1;--r:10px;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+body{background:var(--bg);color:var(--text);font-family:'Syne',sans-serif;min-height:100vh;padding-bottom:40px;}
+
+/* HEADER */
+.hdr{background:var(--s1);border-bottom:1px solid var(--border);padding:12px 16px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:200;}
+.hdr-title{font-size:13px;font-weight:800;letter-spacing:3px;text-transform:uppercase;color:var(--accent);}
+.hdr-clock{font-family:'DM Mono',monospace;font-size:16px;color:var(--text);background:var(--bg);padding:3px 10px;border-radius:6px;}
+
+/* TABS */
+.tabs{display:flex;background:var(--s1);border-bottom:1px solid var(--border);}
+.tab{flex:1;padding:11px 4px;text-align:center;font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);cursor:pointer;border-bottom:3px solid transparent;transition:all .2s;}
+.tab.on{color:var(--accent);border-bottom-color:var(--accent);}
+
+/* PAGES */
+.page{display:none;padding:14px;}
+.page.on{display:block;}
+
+/* LABELS */
+.field{margin-bottom:14px;}
+.lbl{display:block;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:8px;}
+
+/* INPUTS */
+input[type=text],input[type=date],select{width:100%;background:var(--s2);border:1px solid var(--border);border-radius:var(--r);color:var(--text);font-family:'Syne',sans-serif;font-size:15px;padding:11px 13px;outline:none;transition:border-color .2s;-webkit-appearance:none;}
+input[type=time]{width:100%;background:var(--s2);border:1px solid var(--border);border-radius:var(--r);color:var(--text);font-family:'DM Mono',monospace;font-size:20px;padding:11px 13px;outline:none;transition:border-color .2s;-webkit-appearance:none;text-align:center;letter-spacing:2px;}
+input:focus,select:focus{border-color:var(--accent);}
+select option{background:var(--s2);}
+
+/* 4-BUTTON GRID */
+.grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;}
+.pick-btn{background:var(--s2);border:2px solid var(--border);border-radius:8px;color:var(--muted);font-family:'Syne',sans-serif;font-size:11px;font-weight:700;padding:9px 3px;cursor:pointer;text-align:center;transition:all .18s;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.pick-btn .num{display:none;}
+.pick-btn.sel{border-color:var(--accent);color:var(--text);background:rgba(99,102,241,.15);}
+
+
+/* 2-BUTTON GRID (turno) */
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.turno-btn{background:var(--s2);border:2px solid var(--border);border-radius:12px;color:var(--muted);font-family:'DM Mono',monospace;font-size:28px;font-weight:500;padding:16px 4px;cursor:pointer;text-align:center;transition:all .2s;}
+.turno-btn .sub{display:block;font-family:'Syne',sans-serif;font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-top:4px;}
+.turno-btn.sel{border-color:var(--accent);color:var(--accent);background:rgba(99,102,241,.15);}
+.turno-btn.sel .sub{color:var(--accent);}
+
+/* ALERT TOGGLE */
+.alert-row{display:flex;align-items:center;gap:12px;background:var(--s2);border:1px solid var(--border);border-radius:var(--r);padding:12px 14px;margin-bottom:8px;}
+.alert-row label{font-size:13px;font-weight:600;flex:1;cursor:pointer;}
+.toggle{position:relative;width:44px;height:24px;flex-shrink:0;}
+.toggle input{opacity:0;width:0;height:0;}
+.toggle-track{position:absolute;inset:0;background:var(--s3);border-radius:12px;cursor:pointer;transition:background .2s;}
+.toggle input:checked+.toggle-track{background:var(--accent);}
+.toggle-thumb{position:absolute;top:3px;left:3px;width:18px;height:18px;background:white;border-radius:50%;transition:transform .2s;}
+.toggle input:checked~.toggle-thumb{transform:translateX(20px);}
+.interval-row{display:none;margin-top:8px;}
+.interval-row.show{display:block;}
+.seg-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;}
+.seg-btn{background:var(--s2);border:2px solid var(--border);border-radius:8px;color:var(--muted);font-family:'Syne',sans-serif;font-size:13px;font-weight:700;padding:10px 4px;cursor:pointer;text-align:center;transition:all .15s;}
+.seg-btn.sel{border-color:var(--accent);color:var(--accent);background:rgba(99,102,241,.12);}
+
+/* BUTTONS */
+.btn-main{width:100%;background:var(--accent);border:none;border-radius:var(--r);color:white;font-family:'Syne',sans-serif;font-size:15px;font-weight:700;letter-spacing:1px;padding:14px;cursor:pointer;margin-top:8px;transition:opacity .15s;}
+.btn-main:active{opacity:.8;}
+.btn-ghost{width:100%;background:transparent;border:2px solid var(--border);border-radius:var(--r);color:var(--muted);font-family:'Syne',sans-serif;font-size:13px;font-weight:600;padding:11px;cursor:pointer;margin-top:8px;transition:border-color .15s;}
+.btn-ghost:active{border-color:var(--accent);}
+.btn-danger{border-color:var(--desp) !important;color:var(--desp) !important;}
+
+/* OBS BAR */
+.obs-bar{background:var(--s2);border-radius:var(--r);padding:10px 13px;display:flex;flex-wrap:wrap;gap:6px 16px;margin-bottom:10px;font-size:12px;}
+.obs-bar span{color:var(--muted);}
+.obs-bar strong{font-family:'DM Mono',monospace;color:var(--accent);}
+
+/* ALERT BAR */
+.next-bar{background:rgba(99,102,241,.08);border:1px solid var(--accent);border-radius:var(--r);padding:7px 13px;margin-bottom:12px;font-size:11px;color:var(--accent);text-align:center;transition:background .3s;}
+.next-bar.ping{background:rgba(99,102,241,.3);}
+
+/* HORA ROW */
+.hora-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;}
+.hora-box{background:var(--s2);border:1px solid var(--border);border-radius:var(--r);padding:11px 13px;font-family:'DM Mono',monospace;font-size:20px;text-align:center;letter-spacing:2px;color:var(--prod);}
+.sub-lbl{font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:6px;}
+
+/* SECTION LABEL */
+.sec-label{font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:10px;}
+
+/* CATEGORY */
+.cat-row{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px;}
+.cat-pill{background:var(--s2);border:2px solid var(--border);border-radius:10px;color:var(--muted);font-family:'Syne',sans-serif;font-size:12px;font-weight:700;padding:12px 6px;cursor:pointer;text-align:center;transition:all .15s;}
+.cat-pill[data-cat="Productivo"].sel{border-color:var(--prod);color:var(--prod);background:var(--prod-bg);}
+.cat-pill[data-cat="Incidental"].sel{border-color:var(--inc);color:var(--inc);background:var(--inc-bg);}
+.cat-pill[data-cat="Desperdicio"].sel{border-color:var(--desp);color:var(--desp);background:var(--desp-bg);}
+
+/* CHIPS */
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;min-height:40px;}
+.chip{background:var(--s2);border:2px solid var(--border);border-radius:20px;color:var(--muted);font-family:'Syne',sans-serif;font-size:12px;font-weight:600;padding:7px 14px;cursor:pointer;transition:all .15s;white-space:nowrap;}
+.chip.sel-prod{border-color:var(--prod);color:var(--prod);background:var(--prod-bg);}
+.chip.sel-inc{border-color:var(--inc);color:var(--inc);background:var(--inc-bg);}
+.chip.sel-desp{border-color:var(--desp);color:var(--desp);background:var(--desp-bg);}
+
+/* REG BUTTON */
+.btn-reg{width:100%;background:var(--s3);border:2px solid var(--border);border-radius:var(--r);color:var(--text);font-family:'Syne',sans-serif;font-size:14px;font-weight:700;padding:13px;cursor:pointer;transition:all .2s;letter-spacing:.5px;}
+.btn-reg.ready{background:var(--accent);border-color:var(--accent);color:white;}
+.btn-reg:active{opacity:.8;}
+
+/* LOG */
+.log-wrap{background:var(--s2);border-radius:var(--r);padding:10px 12px;max-height:220px;overflow-y:auto;margin-top:12px;}
+.log-hdr{font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:8px;}
+.log-row{display:flex;align-items:center;gap:6px;padding:6px 0;border-bottom:1px solid var(--border);font-size:12px;}
+.log-row:last-child{border-bottom:none;}
+.log-time{font-family:'DM Mono',monospace;color:var(--muted);min-width:38px;}
+.log-min{font-family:'DM Mono',monospace;min-width:30px;text-align:right;color:var(--muted);}
+.log-clasif{font-weight:700;flex:1;}
+.log-desc{font-size:10px;color:var(--muted);max-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.log-actions{display:flex;gap:4px;}
+.log-btn{background:none;border:1px solid var(--border);border-radius:6px;color:var(--muted);cursor:pointer;font-size:11px;padding:2px 7px;font-family:'Syne',sans-serif;font-weight:600;transition:all .15s;}
+.log-btn.edit{border-color:var(--inc);color:var(--inc);}
+.log-btn.del{border-color:var(--desp);color:var(--desp);}
+
+/* EDIT MODAL */
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:500;align-items:flex-end;justify-content:center;}
+.modal-bg.open{display:flex;}
+.modal{background:var(--s1);border-radius:16px 16px 0 0;padding:20px 16px 32px;width:100%;max-width:480px;border-top:2px solid var(--border);}
+.modal-title{font-size:13px;font-weight:800;letter-spacing:2px;text-transform:uppercase;color:var(--accent);margin-bottom:16px;}
+.modal-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;}
+
+/* EXPORT */
+.export-kpi{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px;}
+.exp-card{background:var(--s2);border-radius:var(--r);padding:14px 12px;text-align:center;border-top:3px solid var(--border);}
+.exp-card.p{border-top-color:var(--prod);}
+.exp-card.i{border-top-color:var(--inc);}
+.exp-card.d{border-top-color:var(--desp);}
+.exp-pct{font-family:'DM Mono',monospace;font-size:26px;}
+.exp-card.p .exp-pct{color:var(--prod);}
+.exp-card.i .exp-pct{color:var(--inc);}
+.exp-card.d .exp-pct{color:var(--desp);}
+.exp-lbl{font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-top:3px;}
+.exp-table-wrap{background:var(--s2);border-radius:var(--r);padding:12px;margin-bottom:14px;overflow-x:auto;}
+.exp-table{width:100%;border-collapse:collapse;font-size:12px;}
+.exp-table th{text-align:left;font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);padding:5px 8px;border-bottom:1px solid var(--border);}
+.exp-table td{padding:7px 8px;border-bottom:1px solid var(--border);font-family:'DM Mono',monospace;}
+.exp-table tr:last-child td{border-bottom:none;}
+.divider{height:1px;background:var(--border);margin:14px 0;}
+.info-box{background:rgba(99,102,241,.08);border:1px solid rgba(99,102,241,.3);border-radius:8px;padding:10px 13px;font-size:12px;color:#a5b4fc;margin-bottom:12px;line-height:1.6;}
+</style>
+</head>
+<body>
+
+<div class="hdr">
+  <span class="hdr-title">⚙ WT Registro</span>
+  <div class="hdr-clock" id="clock">00:00:00</div>
+</div>
+<div class="tabs">
+  <div class="tab on"  id="tab-setup" onclick="goTab('setup')">Config</div>
+  <div class="tab"     id="tab-obs"   onclick="goTab('obs')">Observar</div>
+  <div class="tab"     id="tab-exp"   onclick="goTab('exp')">Exportar</div>
+</div>
+
+<!-- ══════════ SETUP ══════════ -->
+<div class="page on" id="pg-setup">
+
+  <div class="field">
+    <span class="lbl">Observador</span>
+    <div class="grid4">
+      <button class="pick-btn" data-g="obs" data-v="SVidela"    onclick="selGroup(this)"><span class="num">1</span>SVidela</button>
+      <button class="pick-btn" data-g="obs" data-v="DGalvez"    onclick="selGroup(this)"><span class="num">2</span>DGalvez</button>
+      <button class="pick-btn" data-g="obs" data-v="KRebolledo" onclick="selGroup(this)"><span class="num">3</span>KRebolledo</button>
+      <button class="pick-btn" data-g="obs" data-v="JMartinez"  onclick="selGroup(this)"><span class="num">4</span>JMartinez</button>
+    </div>
+  </div>
+
+  <div class="field">
+    <span class="lbl">Turno</span>
+    <div class="grid2">
+      <button class="turno-btn sel" id="turnoBtn39" onclick="selTurno('39')">
+        39<span class="sub">Turno 39</span>
+      </button>
+      <button class="turno-btn" id="turnoBtn44" onclick="selTurno('44')">
+        44<span class="sub">Turno 44</span>
+      </button>
+    </div>
+  </div>
+
+  <div class="field">
+    <span class="lbl">Jefe de Turno</span>
+    <div class="grid4">
+      <button class="pick-btn" data-g="jt" data-v="HZabalaga" onclick="selGroup(this)"><span class="num">1</span>HZabalaga</button>
+      <button class="pick-btn" data-g="jt" data-v="CMuñoz"    onclick="selGroup(this)"><span class="num">2</span>CMuñoz</button>
+      <button class="pick-btn" data-g="jt" data-v="DPino"     onclick="selGroup(this)"><span class="num">3</span>DPino</button>
+      <button class="pick-btn" data-g="jt" data-v="RTapia"    onclick="selGroup(this)"><span class="num">4</span>RTapia</button>
+    </div>
+  </div>
+
+  <div class="field">
+    <span class="lbl">Fecha</span>
+    <input type="date" id="cfgDate">
+  </div>
+
+  <div class="field">
+    <span class="lbl">Alerta de intervalo</span>
+    <div class="alert-row">
+      <label for="alertToggle">Activar alerta periódica</label>
+      <label class="toggle">
+        <input type="checkbox" id="alertToggle" onchange="toggleAlert(this.checked)">
+        <div class="toggle-track"></div>
+        <div class="toggle-thumb"></div>
+      </label>
+    </div>
+    <div class="interval-row" id="intervalRow">
+      <span class="lbl" style="margin-bottom:8px">Intervalo (min)</span>
+      <div class="seg-grid">
+        <button class="seg-btn" data-v="5"  onclick="selSeg(this)">5</button>
+        <button class="seg-btn sel" data-v="10" onclick="selSeg(this)">10</button>
+        <button class="seg-btn" data-v="15" onclick="selSeg(this)">15</button>
+        <button class="seg-btn" data-v="20" onclick="selSeg(this)">20</button>
+      </div>
+    </div>
+  </div>
+
+  <button class="btn-main" onclick="startSession()">▶ INICIAR SESIÓN</button>
+  <button class="btn-ghost" onclick="loadSaved()">↩ Retomar sesión guardada</button>
+</div>
+
+<!-- ══════════ OBSERVAR ══════════ -->
+<div class="page" id="pg-obs">
+
+  <div class="obs-bar" id="obsBar"></div>
+
+  <div class="next-bar" id="nextBar" style="display:none">
+    Próxima obs en <strong id="nextCD">—</strong>
+  </div>
+
+  <!-- Hora -->
+  <div class="sec-label">Hora de observación</div>
+  <div class="hora-row">
+    <div>
+      <div class="sub-lbl">Hora actual</div>
+      <div class="hora-box" id="horaLive">--:--</div>
+    </div>
+    <div>
+      <div class="sub-lbl">Registrar como ✎</div>
+      <input type="time" id="inHora">
+    </div>
+  </div>
+
+  <!-- Categoría -->
+  <div class="sec-label">1 · Categoría</div>
+  <div class="cat-row">
+    <button class="cat-pill" data-cat="Productivo"  onclick="selCat(this)">⚒<br>Productivo</button>
+    <button class="cat-pill" data-cat="Incidental"  onclick="selCat(this)">⚡<br>Incidental</button>
+    <button class="cat-pill" data-cat="Desperdicio" onclick="selCat(this)">⚠<br>Desperdicio</button>
+  </div>
+
+  <!-- Clasificación -->
+  <div class="sec-label">2 · Clasificación</div>
+  <div class="chips" id="chipsWrap">
+    <span style="color:var(--muted);font-size:12px">Selecciona una categoría primero.</span>
+  </div>
+
+  <!-- Descripción -->
+  <div class="sec-label">3 · Descripción (opcional)</div>
+  <input type="text" id="inDesc" placeholder="¿Qué está haciendo exactamente?" style="margin-bottom:12px">
+
+  <button class="btn-reg" id="btnReg" onclick="registerObs()">REGISTRAR OBSERVACIÓN</button>
+
+  <!-- Log con edición -->
+  <div class="log-wrap">
+    <div class="log-hdr">Observaciones registradas — toca ✎ para corregir</div>
+    <div id="logList"><span style="color:var(--muted);font-size:12px">Sin registros aún.</span></div>
+  </div>
+
+  <button class="btn-ghost btn-danger" style="margin-top:12px" onclick="goTab('exp')">⏹ Ver resumen y exportar</button>
+</div>
+
+<!-- ══════════ EXPORTAR ══════════ -->
+<div class="page" id="pg-exp">
+  <div class="info-box" id="expInfoBox"></div>
+  <div class="export-kpi" id="expKpis"></div>
+  <div class="exp-table-wrap">
+    <table class="exp-table">
+      <thead><tr><th>Clasificación</th><th>Cat.</th><th>Min</th><th>%</th></tr></thead>
+      <tbody id="expBody"></tbody>
+    </table>
+  </div>
+  <button class="btn-main" id="btnSync" onclick="syncSheets()" style="background:#1a6b3c;margin-top:0">
+    ☁ Guardar en Google Sheets
+  </button>
+  <div id="syncStatus" style="font-size:12px;text-align:center;margin-top:8px;min-height:18px;font-family:'DM Mono',monospace;color:var(--muted)"></div>
+  <div class="divider"></div>
+  <button class="btn-ghost" onclick="exportXLSX()">⬇ Descargar Excel (.xlsx)</button>
+  <button class="btn-ghost" style="margin-top:8px" onclick="exportCSV()">⬇ Descargar CSV</button>
+  <button class="btn-ghost btn-danger" style="margin-top:8px" onclick="clearAll()">🗑 Nueva sesión</button>
+</div>
+
+<!-- ══════════ EDIT MODAL ══════════ -->
+<div class="modal-bg" id="modalBg" onclick="closeModal(event)">
+  <div class="modal">
+    <div class="modal-title">✎ Corregir observación</div>
+
+    <div class="sec-label">Hora</div>
+    <input type="time" id="editHora" style="margin-bottom:12px">
+
+    <div class="sec-label">Categoría</div>
+    <div class="cat-row" id="editCatRow">
+      <button class="cat-pill" data-cat="Productivo"  onclick="editSelCat(this)">⚒<br>Productivo</button>
+      <button class="cat-pill" data-cat="Incidental"  onclick="editSelCat(this)">⚡<br>Incidental</button>
+      <button class="cat-pill" data-cat="Desperdicio" onclick="editSelCat(this)">⚠<br>Desperdicio</button>
+    </div>
+
+    <div class="sec-label">Clasificación</div>
+    <div class="chips" id="editChips">
+      <span style="color:var(--muted);font-size:12px">Selecciona categoría primero.</span>
+    </div>
+
+    <div class="sec-label">Descripción</div>
+    <input type="text" id="editDesc" placeholder="Descripción" style="margin-bottom:14px">
+
+    <div class="modal-row">
+      <button class="btn-ghost" onclick="closeModal()">Cancelar</button>
+      <button class="btn-main" id="btnSaveEdit" style="margin-top:0" onclick="saveEdit()">Guardar cambio</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── CLASIFICACIONES ───────────────────────────────
+const CLASIFS = {
+  'Productivo':  ['TOT','DdD','Limpieza'],
+  'Incidental':  ['Preparación','Seguridad','Tiempo de espera','Traslado','Buscar equipo','Almuerzo','Administrativo'],
+  'Desperdicio': ['Espera mayor','Búsqueda demorada','No entrega equipo','Coordinación Operaciones','Retrabajo','Inactividad']
+};
+const CAT_CLASS={'Productivo':'sel-prod','Incidental':'sel-inc','Desperdicio':'sel-desp'};
+const SHEETS_URL='https://script.google.com/macros/s/AKfycbxoaWYIchj6BNZBLSgkssR4-Hma2E8KNULjqV8Z_VAWMTUEuA3q6o5xUzVDXy3QiJUp/exec';
+
+// ── STATE ─────────────────────────────────────────
+let S={observador:'',turno:'39',jturno:'',date:'',interval:10,alertOn:false,start:null,obs:[],running:false,synced:false};
+let selCatVal=null,selClasifVal=null,nextAlertTs=null,cdInt=null,clockInt=null;
+let userEditedHora=false;
+let editIdx=-1,editCatVal=null,editClasifVal=null;
+
+// ── CLOCK / HORA LIVE ─────────────────────────────
+setInterval(()=>{
+  const t=new Date().toTimeString().slice(0,5);
+  const el=document.getElementById('horaLive');
+  if(el)el.textContent=t;
+  if(!userEditedHora){
+    const ih=document.getElementById('inHora');
+    if(ih)ih.value=t;
+  }
+},1000);
+
+function startClock(){
+  clockInt=setInterval(()=>{
+    if(!S.start)return;
+    const e=Math.floor((Date.now()-S.start)/1000);
+    document.getElementById('clock').textContent=
+      [Math.floor(e/3600),Math.floor(e%3600/60),e%60].map(n=>String(n).padStart(2,'0')).join(':');
+  },1000);
+}
+
+// ── ALERT ─────────────────────────────────────────
+function scheduleAlert(){
+  if(!S.alertOn)return;
+  nextAlertTs=Date.now()+S.interval*60000;
+  clearInterval(cdInt);
+  cdInt=setInterval(()=>{
+    const rem=Math.max(0,nextAlertTs-Date.now());
+    const m=Math.floor(rem/60000),s=Math.floor((rem%60000)/1000);
+    const el=document.getElementById('nextCD');
+    if(el)el.textContent=m+'m '+String(s).padStart(2,'0')+'s';
+    if(rem<=0){pingAlert();nextAlertTs=Date.now()+S.interval*60000;}
+  },500);
+}
+function pingAlert(){
+  const b=document.getElementById('nextBar');
+  if(b){b.classList.add('ping');setTimeout(()=>b.classList.remove('ping'),2000);}
+  if(navigator.vibrate)navigator.vibrate([200,100,200]);
+}
+function toggleAlert(on){
+  S.alertOn=on;
+  document.getElementById('intervalRow').classList.toggle('show',on);
+  if(S.running){
+    document.getElementById('nextBar').style.display=on?'block':'none';
+    if(on)scheduleAlert(); else clearInterval(cdInt);
+  }
+}
+
+// ── TABS ──────────────────────────────────────────
+function goTab(id){
+  ['setup','obs','exp'].forEach(t=>{
+    document.getElementById('tab-'+t).classList.toggle('on',t===id);
+    document.getElementById('pg-'+t).classList.toggle('on',t===id);
+  });
+  if(id==='exp')buildExport();
+}
+
+// ── SETUP SELECTORS ───────────────────────────────
+function selGroup(btn){
+  const g=btn.dataset.g;
+  document.querySelectorAll('.pick-btn[data-g="'+g+'"]').forEach(b=>b.classList.remove('sel'));
+  btn.classList.add('sel');
+  if(g==='obs') S.observador=btn.dataset.v;
+  if(g==='jt')  S.jturno=btn.dataset.v;
+}
+function selTurno(v){
+  S.turno=v;
+  document.getElementById('turnoBtn39').classList.toggle('sel',v==='39');
+  document.getElementById('turnoBtn44').classList.toggle('sel',v==='44');
+}
+function selSeg(btn){
+  document.querySelectorAll('.seg-btn').forEach(b=>b.classList.remove('sel'));
+  btn.classList.add('sel');S.interval=parseInt(btn.dataset.v);
+}
+
+// ── SESSION ───────────────────────────────────────
+function startSession(){
+  if(!S.observador){alert('Selecciona un observador.');return;}
+  if(!S.jturno){alert('Selecciona un Jefe de Turno.');return;}
+  const date=document.getElementById('cfgDate').value;
+  if(!date){alert('Selecciona una fecha.');return;}
+  S.date=date;S.start=Date.now();S.obs=[];S.running=true;S.synced=false;
+  save();
+  renderObsBar();
+  document.getElementById('nextBar').style.display=S.alertOn?'block':'none';
+  const now=new Date().toTimeString().slice(0,5);
+  document.getElementById('inHora').value=now;
+  userEditedHora=false;
+  goTab('obs');
+  startClock();
+  if(S.alertOn)scheduleAlert();
+}
+
+function renderObsBar(){
+  document.getElementById('obsBar').innerHTML=
+    '<div><span>Obs: </span><strong>'+S.observador+'</strong></div>'+
+    '<div><span>Turno: </span><strong>'+S.turno+'</strong></div>'+
+    '<div><span>JT: </span><strong>'+S.jturno+'</strong></div>'+
+    '<div><span>Fecha: </span><strong>'+S.date+'</strong></div>'+
+    '<div><span>Registros: </span><strong id="obsN">'+S.obs.length+'</strong></div>';
+}
+
+function loadSaved(){
+  try{
+    const d=localStorage.getItem('wt3');
+    if(!d){alert('Sin sesión guardada.');return;}
+    S=JSON.parse(d);
+    renderObsBar();
+    document.getElementById('nextBar').style.display=S.alertOn?'block':'none';
+    renderLog();
+    if(S.running){startClock();if(S.alertOn)scheduleAlert();}
+    goTab('obs');
+    alert('✅ Sesión de '+S.observador+' — '+S.obs.length+' registros cargados.');
+  }catch(e){alert('Error al cargar.');}
+}
+
+// ── CAT / CLASIF (OBS) ────────────────────────────
+function selCat(btn){
+  document.querySelectorAll('#pg-obs .cat-pill').forEach(b=>b.classList.remove('sel'));
+  btn.classList.add('sel');selCatVal=btn.dataset.cat;selClasifVal=null;
+  renderChips('chipsWrap',selCatVal,'selChip');checkReady();
+}
+function renderChips(wrapId,cat,fn){
+  const wrap=document.getElementById(wrapId);
+  if(!cat){wrap.innerHTML='<span style="color:var(--muted);font-size:12px">Selecciona una categoría primero.</span>';return;}
+  wrap.innerHTML=(CLASIFS[cat]||[]).map(c=>
+    '<button class="chip" data-c="'+c+'" onclick="'+fn+'(this)">'+c+'</button>'
+  ).join('');
+}
+function selChip(btn){
+  document.querySelectorAll('#chipsWrap .chip').forEach(b=>b.classList.remove('sel-prod','sel-inc','sel-desp'));
+  btn.classList.add(CAT_CLASS[selCatVal]);selClasifVal=btn.dataset.c;checkReady();
+}
+function checkReady(){
+  document.getElementById('btnReg').classList.toggle('ready',!!(selCatVal&&selClasifVal));
+}
+
+// ── REGISTER ──────────────────────────────────────
+function registerObs(){
+  if(!selCatVal||!selClasifVal){alert('Selecciona categoría y clasificación.');return;}
+  const desc=document.getElementById('inDesc').value.trim();
+  const horaReg=document.getElementById('inHora').value||new Date().toTimeString().slice(0,5);
+  let tiempo=S.interval;
+  if(S.obs.length>0){
+    const last=S.obs[S.obs.length-1].hora;
+    const [lh,lm]=last.split(':').map(Number);
+    const [ch,cm]=horaReg.split(':').map(Number);
+    const diff=(ch*60+cm)-(lh*60+lm);
+    if(diff>0)tiempo=diff;
+  }
+  S.obs.push({hora:horaReg,tiempo,desc,obs:'',cat:selCatVal,clasif:selClasifVal});
+  save();
+  document.getElementById('obsN').textContent=S.obs.length;
+  userEditedHora=false;
+  // Reset form
+  document.querySelectorAll('#pg-obs .cat-pill').forEach(b=>b.classList.remove('sel'));
+  document.querySelectorAll('#chipsWrap .chip').forEach(b=>b.classList.remove('sel-prod','sel-inc','sel-desp'));
+  document.getElementById('inDesc').value='';
+  selCatVal=null;selClasifVal=null;
+  document.getElementById('chipsWrap').innerHTML='<span style="color:var(--muted);font-size:12px">Selecciona una categoría primero.</span>';
+  checkReady();renderLog();
+  if(S.alertOn)scheduleAlert();
+}
+
+// ── LOG ───────────────────────────────────────────
+function renderLog(){
+  const el=document.getElementById('logList');
+  if(!S.obs.length){el.innerHTML='<span style="color:var(--muted);font-size:12px">Sin registros aún.</span>';return;}
+  const col={'Productivo':'var(--prod)','Incidental':'var(--inc)','Desperdicio':'var(--desp)'};
+  el.innerHTML=[...S.obs].reverse().map((o,i)=>{
+    const idx=S.obs.length-1-i;
+    return '<div class="log-row">'+
+      '<span class="log-time">'+o.hora+'</span>'+
+      '<span class="log-min">'+o.tiempo+'m</span>'+
+      '<span class="log-clasif" style="color:'+col[o.cat]+'">'+o.clasif+'</span>'+
+      '<span class="log-desc">'+o.desc+'</span>'+
+      '<div class="log-actions">'+
+        '<button class="log-btn edit" onclick="openEdit('+idx+')">✎</button>'+
+        '<button class="log-btn del"  onclick="delObs('+idx+')">✕</button>'+
+      '</div>'+
+    '</div>';
+  }).join('');
+}
+function delObs(idx){
+  if(!confirm('¿Eliminar esta observación?'))return;
+  S.obs.splice(idx,1);save();
+  document.getElementById('obsN').textContent=S.obs.length;
+  renderLog();
+}
+
+// ── EDIT MODAL ────────────────────────────────────
+function openEdit(idx){
+  editIdx=idx;
+  const o=S.obs[idx];
+  editCatVal=o.cat;editClasifVal=o.clasif;
+  document.getElementById('editHora').value=o.hora;
+  document.getElementById('editDesc').value=o.desc;
+  // Set cat
+  document.querySelectorAll('#editCatRow .cat-pill').forEach(b=>{
+    b.classList.toggle('sel',b.dataset.cat===o.cat);
+  });
+  // Render clasif chips
+  renderChips('editChips',o.cat,'editSelChip');
+  setTimeout(()=>{
+    document.querySelectorAll('#editChips .chip').forEach(b=>{
+      if(b.dataset.c===o.clasif) b.classList.add(CAT_CLASS[o.cat]);
+    });
+  },10);
+  document.getElementById('modalBg').classList.add('open');
+}
+function editSelCat(btn){
+  document.querySelectorAll('#editCatRow .cat-pill').forEach(b=>b.classList.remove('sel'));
+  btn.classList.add('sel');editCatVal=btn.dataset.cat;editClasifVal=null;
+  renderChips('editChips',editCatVal,'editSelChip');
+}
+function editSelChip(btn){
+  document.querySelectorAll('#editChips .chip').forEach(b=>b.classList.remove('sel-prod','sel-inc','sel-desp'));
+  btn.classList.add(CAT_CLASS[editCatVal]);editClasifVal=btn.dataset.c;
+}
+function saveEdit(){
+  if(!editClasifVal){alert('Selecciona una clasificación.');return;}
+  const o=S.obs[editIdx];
+  const newHora=document.getElementById('editHora').value||o.hora;
+  // Recalculate tiempo
+  let tiempo=S.interval;
+  if(editIdx>0){
+    const prev=S.obs[editIdx-1].hora;
+    const [lh,lm]=prev.split(':').map(Number);
+    const [ch,cm]=newHora.split(':').map(Number);
+    const diff=(ch*60+cm)-(lh*60+lm);
+    if(diff>0)tiempo=diff;
+  }
+  S.obs[editIdx]={...o,hora:newHora,tiempo,cat:editCatVal,clasif:editClasifVal,desc:document.getElementById('editDesc').value.trim()};
+  save();renderLog();closeModal();
+}
+function closeModal(e){
+  if(e&&e.target!==document.getElementById('modalBg'))return;
+  document.getElementById('modalBg').classList.remove('open');
+  editIdx=-1;editCatVal=null;editClasifVal=null;
+}
+
+// ── BUILD EXPORT ──────────────────────────────────
+function buildExport(){
+  const total=S.obs.reduce((a,o)=>a+o.tiempo,0);
+  // Info box
+  document.getElementById('expInfoBox').innerHTML=
+    'Observador: <strong>'+S.observador+'</strong> · Turno: <strong>'+S.turno+
+    '</strong> · JT: <strong>'+S.jturno+'</strong> · Fecha: <strong>'+S.date+
+    '</strong> · Registros: <strong>'+S.obs.length+'</strong>';
+  if(!total){
+    document.getElementById('expKpis').innerHTML='<span style="color:var(--muted)">Sin datos.</span>';
+    document.getElementById('expBody').innerHTML='';return;
+  }
+  const cats=['Productivo','Incidental','Desperdicio'],cl=['p','i','d'];
+  const catMin={};cats.forEach(c=>catMin[c]=S.obs.filter(o=>o.cat===c).reduce((a,o)=>a+o.tiempo,0));
+  document.getElementById('expKpis').innerHTML=cats.map((c,i)=>{
+    const pct=Math.round(catMin[c]/total*100);
+    return '<div class="exp-card '+cl[i]+'"><div class="exp-pct">'+pct+'%</div><div class="exp-lbl">'+c+'</div></div>';
+  }).join('');
+  const clasifMap={};
+  S.obs.forEach(o=>{if(!clasifMap[o.clasif])clasifMap[o.clasif]={min:0,cat:o.cat};clasifMap[o.clasif].min+=o.tiempo;});
+  const col={'Productivo':'var(--prod)','Incidental':'var(--inc)','Desperdicio':'var(--desp)'};
+  document.getElementById('expBody').innerHTML=Object.entries(clasifMap)
+    .sort((a,b)=>b[1].min-a[1].min)
+    .map(([k,v])=>{const pct=Math.round(v.min/total*100);
+      return '<tr><td style="color:'+col[v.cat]+';font-weight:600">'+k+'</td><td style="color:var(--muted)">'+v.cat+'</td><td>'+v.min+'</td><td>'+pct+'%</td></tr>';
+    }).join('');
+}
+
+// ── GOOGLE SHEETS SYNC ────────────────────────────
+async function syncSheets(){
+  if(!S.obs.length){alert('Sin observaciones para guardar.');return;}
+  const btn=document.getElementById('btnSync');
+  const status=document.getElementById('syncStatus');
+  btn.disabled=true;btn.textContent='⏳ Enviando...';
+  status.style.color='var(--muted)';status.textContent='Conectando con Google Sheets...';
+  try{
+    // Each row includes ALL fields: observador, turno, jturno, fecha + obs fields
+    const payload={
+      obs: S.obs.map(o=>({
+        observador: S.observador,
+        turno:      S.turno,
+        jturno:     S.jturno,
+        fecha:      S.date,
+        hora:       o.hora,
+        tiempo:     o.tiempo,
+        descripcion:o.desc,
+        observaciones: o.obs||'',
+        categoria:  o.cat,
+        clasificacion: o.clasif
+      }))
+    };
+    // Use Image() ping — works on all browsers and mobile without CORS issues
+    const encoded = encodeURIComponent(JSON.stringify(payload));
+    await new Promise((resolve) => {
+      const img = new Image();
+      img.onload = img.onerror = () => resolve();
+      img.src = SHEETS_URL + '?data=' + encoded;
+      // Fallback timeout in case neither fires
+      setTimeout(resolve, 5000);
+    });
+    btn.textContent='✅ Guardado en Sheets';
+    btn.style.background='#14532d';
+    status.style.color='var(--prod)';
+    status.textContent='✓ '+S.obs.length+' filas enviadas · '+S.observador+' · '+S.date;
+    S.synced=true;save();
+  }catch(err){
+    btn.textContent='☁ Guardar en Google Sheets';
+    btn.style.background='#1a6b3c';
+    status.style.color='var(--desp)';
+    status.textContent='✗ Error de red. Descarga el Excel como respaldo.';
+  }
+  btn.disabled=false;
+}
+
+// ── XLSX EXPORT ───────────────────────────────────
+function exportXLSX(){
+  if(!S.obs.length){alert('Sin observaciones.');return;}
+  const wb=XLSX.utils.book_new();
+  // Sheet 1: detalle completo con todos los campos
+  const h=['Observador','Turno','Jefe Turno','Fecha','Hora','Tiempo Act','Descripción','Observaciones','Categoría','Clasificación'];
+  const rows=S.obs.map(o=>[S.observador,S.turno,S.jturno,S.date,o.hora,o.tiempo,o.desc,o.obs||'',o.cat,o.clasif]);
+  const ws1=XLSX.utils.aoa_to_sheet([h,...rows]);
+  ws1['!cols']=[12,8,12,12,8,11,35,20,14,22].map(w=>({wch:w}));
+  XLSX.utils.book_append_sheet(wb,ws1,'Observaciones');
+  // Sheet 2: resumen
+  const total=S.obs.reduce((a,o)=>a+o.tiempo,0);
+  const cm={};S.obs.forEach(o=>{if(!cm[o.clasif])cm[o.clasif]={min:0,cat:o.cat};cm[o.clasif].min+=o.tiempo;});
+  const sh=['Clasificación','Categoría','Minutos','Porcentaje'];
+  const sr=Object.entries(cm).sort((a,b)=>b[1].min-a[1].min).map(([k,v])=>[k,v.cat,v.min,(v.min/total*100).toFixed(1)+'%']);
+  sr.push(['TOTAL','',total,'100%']);
+  const ws2=XLSX.utils.aoa_to_sheet([sh,...sr]);
+  ws2['!cols']=[24,14,10,12].map(w=>({wch:w}));
+  XLSX.utils.book_append_sheet(wb,ws2,'Resumen');
+  XLSX.writeFile(wb,'WT_'+S.observador+'_T'+S.turno+'_'+S.date+'.xlsx');
+}
+
+// ── CSV EXPORT ────────────────────────────────────
+function exportCSV(){
+  if(!S.obs.length){alert('Sin observaciones.');return;}
+  const h=['Observador','Turno','Jefe Turno','Fecha','Hora','Tiempo Act','Descripción','Observaciones','Categoría','Clasificación'];
+  const rows=S.obs.map(o=>[S.observador,S.turno,S.jturno,S.date,o.hora,o.tiempo,'"'+o.desc+'"','"'+(o.obs||'')+'"',o.cat,o.clasif].join(';'));
+  const csv=[h.join(';'),...rows].join('\n');
+  const blob=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8;'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');a.href=url;
+  a.download='WT_'+S.observador+'_T'+S.turno+'_'+S.date+'.csv';
+  a.click();URL.revokeObjectURL(url);
+}
+
+// ── PERSIST ───────────────────────────────────────
+function save(){try{localStorage.setItem('wt3',JSON.stringify(S));}catch(e){}}
+
+function clearAll(){
+  if(!confirm('¿Eliminar sesión actual?'))return;
+  try{localStorage.removeItem('wt3');}catch(e){}
+  S={observador:'',turno:'39',jturno:'',date:'',interval:10,alertOn:false,start:null,obs:[],running:false,synced:false};
+  clearInterval(cdInt);clearInterval(clockInt);
+  document.getElementById('clock').textContent='00:00:00';
+  goTab('setup');
+}
+
+// ── INIT ──────────────────────────────────────────
+document.getElementById('cfgDate').valueAsDate=new Date();
+selTurno('39');
+document.getElementById('inHora').addEventListener('input',()=>{userEditedHora=true;});
+// Init hora field immediately on load
+document.getElementById('inHora').value=new Date().toTimeString().slice(0,5);
+</script>
+</body>
+</html>
